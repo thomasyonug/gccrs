@@ -180,7 +180,8 @@ public:
       }
 
     auto fnType = new TyTy::FnType (function.get_mappings ().get_hirid (),
-				    params, ret_type);
+				    std::move (params), ret_type,
+				    std::move (substitions));
     context->insert_type (function.get_mappings (), fnType);
   }
 

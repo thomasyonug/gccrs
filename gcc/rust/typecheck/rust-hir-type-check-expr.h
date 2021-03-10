@@ -25,6 +25,7 @@
 #include "rust-tyty-call.h"
 #include "rust-hir-type-check-struct-field.h"
 #include "rust-hir-method-resolve.h"
+#include "rust-substitution-mapper.h"
 
 namespace Rust {
 namespace Resolver {
@@ -787,17 +788,17 @@ public:
 
     if (infered->has_subsititions_defined ())
       {
-	if (infered->get_kind () != TyTy::TypeKind::ADT)
+	if (!infered->can_substitute ())
 	  {
 	    rust_error_at (expr.get_locus (),
-			   "substitutions only support on ADT types so far");
+			   "substitutions not supported for %s",
+			   infered->as_string ().c_str ());
 	    return;
 	  }
 
-	TyTy::ADTType *adt = static_cast<TyTy::ADTType *> (infered);
-	infered = seg.has_generic_args ()
-		    ? adt->handle_substitions (seg.get_generic_args ())
-		    : adt->infer_substitions ();
+	infered = SubstMapper::Resolve (infered, seg.has_generic_args ()
+						   ? &seg.get_generic_args ()
+						   : nullptr);
       }
   }
 

@@ -101,6 +101,11 @@ public:
 
   virtual bool has_subsititions_defined () const { return false; }
 
+  virtual bool can_substitute () const
+  {
+    return supports_substitions () && has_subsititions_defined ();
+  }
+
 protected:
   BaseType (HirId ref, HirId ty_ref, TypeKind kind,
 	    std::set<HirId> refs = std::set<HirId> ())
@@ -503,20 +508,23 @@ private:
   bool is_tuple;
 };
 
-class FnType : public BaseType
+class FnType : public BaseType, public SubstitionRef<FnType>
 {
 public:
   FnType (HirId ref, std::vector<std::pair<HIR::Pattern *, BaseType *> > params,
-	  BaseType *type, std::set<HirId> refs = std::set<HirId> ())
-    : BaseType (ref, ref, TypeKind::FNDEF, refs), params (std::move (params)),
+	  BaseType *type, std::vector<SubstitionMapping> subst_refs,
+	  std::set<HirId> refs = std::set<HirId> ())
+    : BaseType (ref, ref, TypeKind::FNDEF, refs),
+      SubstitionRef (std::move (subst_refs)), params (std::move (params)),
       type (type)
   {}
 
   FnType (HirId ref, HirId ty_ref,
 	  std::vector<std::pair<HIR::Pattern *, BaseType *> > params,
-	  BaseType *type, std::set<HirId> refs = std::set<HirId> ())
-    : BaseType (ref, ty_ref, TypeKind::FNDEF, refs), params (params),
-      type (type)
+	  BaseType *type, std::vector<SubstitionMapping> subst_refs,
+	  std::set<HirId> refs = std::set<HirId> ())
+    : BaseType (ref, ty_ref, TypeKind::FNDEF, refs),
+      SubstitionRef (std::move (subst_refs)), params (params), type (type)
   {}
 
   void accept_vis (TyVisitor &vis) override;
@@ -554,6 +562,21 @@ public:
   BaseType *get_return_type () const { return type; }
 
   BaseType *clone () final override;
+
+  bool supports_substitions () const override final { return true; }
+
+  bool has_subsititions_defined () const override final
+  {
+    return has_substitions ();
+  }
+
+  FnType *infer_substitions () override final;
+
+  FnType *handle_substitions (HIR::GenericArgs &generic_args) override final;
+
+  void fill_in_at (size_t index, BaseType *type) override final;
+
+  void fill_in_params_for (SubstitionMapping sub, BaseType *type);
 
 private:
   std::vector<std::pair<HIR::Pattern *, BaseType *> > params;

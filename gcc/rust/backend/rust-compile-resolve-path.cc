@@ -71,8 +71,8 @@ ResolvePathRef::visit (HIR::PathInExpression &expr)
   Bfunction *fn = nullptr;
   if (!ctx->lookup_function_decl (ref, &fn))
     {
-      // this might fail because its a forward decl so we can attempt to
-      // resolve it now
+      // this might fail because its a forward decl or a generic function so we
+      // can attempt to resolve it now
       HIR::Item *resolved_item = ctx->get_mappings ()->lookup_hir_item (
 	expr.get_mappings ().get_crate_num (), ref);
       if (resolved_item == nullptr)
@@ -84,7 +84,8 @@ ResolvePathRef::visit (HIR::PathInExpression &expr)
       CompileItem::compile (resolved_item, ctx);
       if (!ctx->lookup_function_decl (ref, &fn))
 	{
-	  rust_error_at (expr.get_locus (), "forward decl was not compiled 1");
+	  rust_fatal_error (expr.get_locus (),
+			    "forward decl was not compiled 1");
 	  return;
 	}
     }

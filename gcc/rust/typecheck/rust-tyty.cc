@@ -296,12 +296,12 @@ ADTType::fill_in_at (size_t index, BaseType *type)
 void
 ADTType::fill_in_params_for (SubstitionMapping sub, BaseType *type)
 {
+  const ParamType *pp = sub.get_param_ty ();
   iterate_fields ([&] (StructFieldType *field) mutable -> bool {
     bool is_param_ty = field->get_field_type ()->get_kind () == TypeKind::PARAM;
     if (!is_param_ty)
       return true;
 
-    const ParamType *pp = sub.get_param_ty ();
     ParamType *p = static_cast<ParamType *> (field->get_field_type ());
 
     // for now let just see what symbols match up for the substitution
@@ -429,7 +429,100 @@ FnType::clone ()
       std::pair<HIR::Pattern *, BaseType *> (p.first, p.second->clone ()));
 
   return new FnType (get_ref (), get_ty_ref (), std::move (cloned_params),
-		     get_return_type ()->clone (), get_combined_refs ());
+		     get_return_type ()->clone (), clone_substs (),
+		     get_combined_refs ());
+}
+
+FnType *
+FnType::infer_substitions ()
+{
+  auto context = Resolver::TypeCheckContext::get ();
+  FnType *fn = static_cast<FnType *> (clone ());
+
+  for (auto &sub : fn->get_substs ())
+    {
+      // generate an new inference variable
+      InferType *infer = new InferType (mappings->get_next_hir_id (),
+					InferType::InferTypeKind::GENERAL);
+      context->insert_type (
+	Analysis::NodeMapping (mappings->get_current_crate (), UNKNOWN_NODEID,
+			       infer->get_ref (), UNKNOWN_LOCAL_DEFID),
+	infer);
+
+      sub.fill_param_ty (infer);
+      fn->fill_in_params_for (sub, infer);
+    }
+
+  // generate new ty ref id since this is an instantiate of the generic
+  fn->set_ty_ref (mappings->get_next_hir_id ());
+
+  return fn;
+}
+
+FnType *
+FnType::handle_substitions (HIR::GenericArgs &generic_args)
+{
+  if (generic_args.get_type_args ().size () != get_num_substitions ())
+    {
+      rust_error_at (
+	generic_args.get_locus (),
+	"invalid number of generic arguments to generic Function type");
+      return nullptr;
+    }
+
+  FnType *fn = static_cast<FnType *> (clone ());
+  size_t index = 0;
+  for (auto &arg : generic_args.get_type_args ())
+    {
+      BaseType *resolved = Resolver::TypeCheckType::Resolve (arg.get ());
+      if (resolved == nullptr)
+	{
+	  rust_error_at (generic_args.get_locus (),
+			 "failed to resolve type arguments");
+	  return nullptr;
+	}
+
+      fn->fill_in_at (index, resolved);
+      index++;
+    }
+
+  // generate new ty ref id since this is an instantiate of the generic
+  fn->set_ty_ref (mappings->get_next_hir_id ());
+
+  return fn;
+}
+
+void
+FnType::fill_in_at (size_t index, BaseType *type)
+{
+  SubstitionMapping sub = get_substition_mapping_at (index);
+  SubstitionRef<FnType>::fill_in_at (index, type);
+  fill_in_params_for (sub, type);
+}
+
+void
+FnType::fill_in_params_for (SubstitionMapping sub, BaseType *type)
+{
+  const ParamType *pp = sub.get_param_ty ();
+  for (auto &fn_param : get_params ())
+    {
+      bool is_param_ty = fn_param.second->get_kind () == TypeKind::PARAM;
+      if (!is_param_ty)
+	continue;
+
+      ParamType *p = static_cast<ParamType *> (fn_param.second);
+      if (p->get_symbol ().compare (pp->get_symbol ()) == 0)
+	p->set_ty_ref (type->get_ref ());
+    }
+
+  auto return_type = get_return_type ();
+  bool is_param_ty = return_type->get_kind () == TypeKind::PARAM;
+  if (is_param_ty)
+    {
+      ParamType *p = static_cast<ParamType *> (return_type);
+      if (p->get_symbol ().compare (pp->get_symbol ()) == 0)
+	p->set_ty_ref (type->get_ref ());
+    }
 }
 
 void

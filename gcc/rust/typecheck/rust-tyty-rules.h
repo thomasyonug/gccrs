@@ -1016,14 +1016,7 @@ public:
   BaseType *unify (BaseType *other) override final
   {
     if (base->get_ref () == base->get_ty_ref ())
-      {
-	Location locus = mappings->lookup_location (base->get_ref ());
-	rust_fatal_error (locus,
-			  "invalid use of unify with ParamTy [%s] and [%s]",
-			  base->as_string ().c_str (),
-			  other->as_string ().c_str ());
-	return nullptr;
-      }
+      return BaseRules::unify (other);
 
     auto context = Resolver::TypeCheckContext::get ();
     BaseType *lookup = nullptr;
@@ -1031,6 +1024,17 @@ public:
     rust_assert (ok);
 
     return lookup->unify (other);
+  }
+
+  void visit (ParamType &type) override
+  {
+    if (base->get_symbol ().compare (type.get_symbol ()) != 0)
+      {
+	BaseRules::visit (type);
+	return;
+      }
+
+    resolved = base->clone ();
   }
 
 private:

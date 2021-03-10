@@ -61,8 +61,6 @@ public:
       }
   }
 
-  ~Context () {}
-
   bool lookup_compiled_types (HirId id, ::Btype **type)
   {
     auto it = compiled_type_map.find (id);

@@ -116,8 +116,13 @@ public:
 	return;
       }
 
-    TyTy::FnType *fntype = (TyTy::FnType *) fntype_tyty;
-    // convert to the actual function type
+    TyTy::FnType *fntype = static_cast<TyTy::FnType *> (fntype_tyty);
+    if (fntype->has_subsititions_defined ())
+      {
+	// we cant do anything for this only when it is used
+	return;
+      }
+
     ::Btype *compiled_fn_type = TyTyResolveCompile::compile (ctx, fntype);
 
     unsigned int flags = 0;
