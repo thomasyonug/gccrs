@@ -67,15 +67,6 @@ ResolvePathRef::visit (HIR::PathInExpression &expr)
       return;
     }
 
-  // it must resolve to some kind of HIR::Item
-  HIR::Item *resolved_item = ctx->get_mappings ()->lookup_hir_item (
-    expr.get_mappings ().get_crate_num (), ref);
-  if (resolved_item == nullptr)
-    {
-      rust_error_at (expr.get_locus (), "failed to lookup forward decl");
-      return;
-    }
-
   // must be a function call but it might be a generic function which needs to
   // be compiled first
   TyTy::BaseType *lookup = nullptr;
@@ -87,6 +78,15 @@ ResolvePathRef::visit (HIR::PathInExpression &expr)
   Bfunction *fn = nullptr;
   if (!ctx->lookup_function_decl (lookup->get_ty_ref (), &fn))
     {
+      // it must resolve to some kind of HIR::Item
+      HIR::Item *resolved_item = ctx->get_mappings ()->lookup_hir_item (
+	expr.get_mappings ().get_crate_num (), ref);
+      if (resolved_item == nullptr)
+	{
+	  rust_error_at (expr.get_locus (), "failed to lookup definition decl");
+	  return;
+	}
+
       if (!lookup->has_subsititions_defined ())
 	CompileItem::compile (resolved_item, ctx);
       else

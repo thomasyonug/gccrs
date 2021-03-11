@@ -31,7 +31,7 @@ public:
   static TyTy::BaseType *Resolve (TyTy::BaseType *base,
 				  HIR::GenericArgs *generics)
   {
-    SubstMapper mapper (generics);
+    SubstMapper mapper (base->get_ref (), generics);
     base->accept_vis (mapper);
     rust_assert (mapper.resolved != nullptr);
     return mapper.resolved;
@@ -41,14 +41,18 @@ public:
 
   void visit (TyTy::FnType &type) override
   {
-    resolved = have_generic_args () ? type.handle_substitions (*generics)
-				    : type.infer_substitions ();
+    auto concrete = have_generic_args () ? type.handle_substitions (*generics)
+					 : type.infer_substitions ();
+    if (concrete != nullptr)
+      resolved = concrete;
   }
 
   void visit (TyTy::ADTType &type) override
   {
-    resolved = have_generic_args () ? type.handle_substitions (*generics)
-				    : type.infer_substitions ();
+    auto concrete = have_generic_args () ? type.handle_substitions (*generics)
+					 : type.infer_substitions ();
+    if (concrete != nullptr)
+      resolved = concrete;
   }
 
   void visit (TyTy::UnitType &) override { gcc_unreachable (); }
@@ -69,8 +73,8 @@ public:
   void visit (TyTy::StrType &) override { gcc_unreachable (); }
 
 private:
-  SubstMapper (HIR::GenericArgs *generics)
-    : resolved (nullptr), generics (generics)
+  SubstMapper (HirId ref, HIR::GenericArgs *generics)
+    : resolved (new TyTy::ErrorType (ref)), generics (generics)
   {}
 
   TyTy::BaseType *resolved;
