@@ -179,6 +179,9 @@ public:
 	return;
       }
 
+    printf ("Resolved Call Expr to : %s\n",
+	    function_tyty->as_string ().c_str ());
+
     infered = TyTy::TypeCheckCallExpr::go (function_tyty, expr, context);
     if (infered == nullptr)
       {

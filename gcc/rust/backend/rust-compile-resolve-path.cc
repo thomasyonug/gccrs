@@ -67,22 +67,39 @@ ResolvePathRef::visit (HIR::PathInExpression &expr)
       return;
     }
 
-  // must be a function call
-  Bfunction *fn = nullptr;
-  if (!ctx->lookup_function_decl (ref, &fn))
+  // it must resolve to some kind of HIR::Item
+  HIR::Item *resolved_item = ctx->get_mappings ()->lookup_hir_item (
+    expr.get_mappings ().get_crate_num (), ref);
+  if (resolved_item == nullptr)
     {
-      // this might fail because its a forward decl or a generic function so we
-      // can attempt to resolve it now
-      HIR::Item *resolved_item = ctx->get_mappings ()->lookup_hir_item (
-	expr.get_mappings ().get_crate_num (), ref);
-      if (resolved_item == nullptr)
+      rust_error_at (expr.get_locus (), "failed to lookup forward decl");
+      return;
+    }
+
+  // must be a function call but it might be a generic function which needs to
+  // be compiled first
+  TyTy::BaseType *lookup = nullptr;
+  bool ok = ctx->get_tyctx ()->lookup_type (expr.get_mappings ().get_hirid (),
+					    &lookup);
+  rust_assert (ok);
+  rust_assert (lookup->get_kind () == TyTy::TypeKind::FNDEF);
+
+  Bfunction *fn = nullptr;
+  if (!ctx->lookup_function_decl (lookup->get_ty_ref (), &fn))
+    {
+      if (!lookup->has_subsititions_defined ())
+	CompileItem::compile (resolved_item, ctx);
+      else
 	{
-	  rust_error_at (expr.get_locus (), "failed to lookup forward decl");
-	  return;
+	  // GENERIC function
+	  printf ("Backend resolve path type to: %s is a generic: %s\n",
+		  lookup->as_string ().c_str (),
+		  lookup->can_substitute () ? "true" : "false");
+
+	  CompileItem::compile (resolved_item, ctx, true, lookup);
 	}
 
-      CompileItem::compile (resolved_item, ctx);
-      if (!ctx->lookup_function_decl (ref, &fn))
+      if (!ctx->lookup_function_decl (lookup->get_ty_ref (), &fn))
 	{
 	  rust_fatal_error (expr.get_locus (),
 			    "forward decl was not compiled 1");
