@@ -399,7 +399,7 @@ protected:
     substitions.at (index).fill_param_ty (type);
   }
 
-  SubstitionMapping get_substition_mapping_at (size_t index)
+  SubstitionMapping &get_substition_mapping_at (size_t index)
   {
     return substitions.at (index);
   }
@@ -500,7 +500,7 @@ public:
 
   void fill_in_at (size_t index, BaseType *type) override final;
 
-  void fill_in_params_for (SubstitionMapping sub, BaseType *type);
+  void fill_in_params_for (SubstitionMapping &sub, BaseType *type);
 
 private:
   std::string identifier;
@@ -576,7 +576,7 @@ public:
 
   void fill_in_at (size_t index, BaseType *type) override final;
 
-  void fill_in_params_for (SubstitionMapping sub, BaseType *type);
+  void fill_in_params_for (SubstitionMapping &sub, BaseType *type);
 
 private:
   std::vector<std::pair<HIR::Pattern *, BaseType *> > params;

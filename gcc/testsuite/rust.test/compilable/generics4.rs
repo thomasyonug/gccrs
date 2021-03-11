@@ -4,15 +4,10 @@ struct Foo<T> {
 }
 
 fn test<T>(a: T) -> Foo<T> {
-    Foo::<T> { a: a, b: true }
+    Foo { a: a, b: true }
 }
 
 fn main() {
-    let a;
-    a = test(123);
-    let aa: i32 = a.a;
-
-    let b;
-    b = test::<u32>(456);
-    let bb: u32 = 456;
+    let a: Foo<i32> = test(123);
+    let b: Foo<u32> = test(456);
 }

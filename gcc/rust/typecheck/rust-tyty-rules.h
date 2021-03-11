@@ -239,7 +239,7 @@ public:
   virtual void visit (ParamType &type) override
   {
     Location ref_locus = mappings->lookup_location (type.get_ref ());
-    rust_error_at (ref_locus, "expected [%s] got [ParamTy <%s>]",
+    rust_error_at (ref_locus, "WTF expected [%s] got [ParamTy <%s>]",
 		   get_base ()->as_string ().c_str (),
 		   type.as_string ().c_str ());
     gcc_unreachable ();
@@ -1016,12 +1016,19 @@ public:
   BaseType *unify (BaseType *other) override final
   {
     if (base->get_ref () == base->get_ty_ref ())
-      return BaseRules::unify (other);
+      {
+	printf ("PARAM_TY_RULES ref == ty_ref!!!\n");
+	// return BaseRules::unify (other);
+	gcc_unreachable ();
+      }
 
     auto context = Resolver::TypeCheckContext::get ();
     BaseType *lookup = nullptr;
     bool ok = context->lookup_type (base->get_ty_ref (), &lookup);
     rust_assert (ok);
+
+    printf ("PARAMTY %s lookup to %s vs %s\n", base->as_string ().c_str (),
+	    lookup->as_string ().c_str (), other->as_string ().c_str ());
 
     return lookup->unify (other);
   }

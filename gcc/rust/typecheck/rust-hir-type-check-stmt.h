@@ -103,6 +103,12 @@ public:
 				   TyTy::InferType::InferTypeKind::GENERAL));
 	  }
       }
+
+    TyTy::BaseType *lookup = nullptr;
+    bool ok = context->lookup_type (stmt.get_mappings ().get_hirid (), &lookup);
+    rust_assert (ok);
+    printf ("Let Stmt: %s has type: %s\n", stmt.as_string ().c_str (),
+	    lookup->as_string ().c_str ());
   }
 
 private:

@@ -294,7 +294,7 @@ ADTType::fill_in_at (size_t index, BaseType *type)
 }
 
 void
-ADTType::fill_in_params_for (SubstitionMapping sub, BaseType *type)
+ADTType::fill_in_params_for (SubstitionMapping &sub, BaseType *type)
 {
   const ParamType *pp = sub.get_param_ty ();
   iterate_fields ([&] (StructFieldType *field) mutable -> bool {
@@ -495,24 +495,27 @@ FnType::handle_substitions (HIR::GenericArgs &generic_args)
 void
 FnType::fill_in_at (size_t index, BaseType *type)
 {
-  SubstitionMapping sub = get_substition_mapping_at (index);
+  SubstitionMapping &sub = get_substition_mapping_at (index);
   SubstitionRef<FnType>::fill_in_at (index, type);
   fill_in_params_for (sub, type);
 }
 
 void
-FnType::fill_in_params_for (SubstitionMapping sub, BaseType *type)
+FnType::fill_in_params_for (SubstitionMapping &sub, BaseType *type)
 {
   const ParamType *pp = sub.get_param_ty ();
   for (auto &fn_param : get_params ())
     {
       bool is_param_ty = fn_param.second->get_kind () == TypeKind::PARAM;
-      if (!is_param_ty)
-	continue;
-
-      ParamType *p = static_cast<ParamType *> (fn_param.second);
-      if (p->get_symbol ().compare (pp->get_symbol ()) == 0)
-	p->set_ty_ref (type->get_ref ());
+      if (is_param_ty)
+	{
+	  ParamType *p = static_cast<ParamType *> (fn_param.second);
+	  if (p->get_symbol ().compare (pp->get_symbol ()) == 0)
+	    p->set_ty_ref (type->get_ref ());
+	}
+      else if (fn_param.second->has_subsititions_defined ())
+	{
+	}
     }
 
   auto return_type = get_return_type ();
@@ -1004,9 +1007,15 @@ TypeCheckCallExpr::visit (ADTType &type)
 	return false;
       }
 
+    printf ("TypeCheckCallExpr :: field tyty %s vs arg %s\n",
+	    field_tyty->as_string ().c_str (), arg->as_string ().c_str ());
     auto res = field_tyty->unify (arg);
     if (res == nullptr)
-      return false;
+      {
+	printf ("TypeCheckCallExpr :: UNIFY_FAILURE field tyty %s vs arg %s\n",
+		field_tyty->as_string ().c_str (), arg->as_string ().c_str ());
+	return false;
+      }
 
     delete res;
     i++;
