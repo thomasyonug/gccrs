@@ -718,7 +718,7 @@ public:
 	return;
       }
 
-    TyTy::ADTType *adt = (TyTy::ADTType *) struct_base;
+    TyTy::ADTType *adt = static_cast<TyTy::ADTType *> (struct_base);
     auto resolved = adt->get_field (expr.get_field_name ());
     if (resolved == nullptr)
       {
