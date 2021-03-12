@@ -1018,8 +1018,7 @@ public:
     if (base->get_ref () == base->get_ty_ref ())
       {
 	printf ("PARAM_TY_RULES ref == ty_ref!!!\n");
-	// return BaseRules::unify (other);
-	gcc_unreachable ();
+	return BaseRules::unify (other);
       }
 
     auto context = Resolver::TypeCheckContext::get ();

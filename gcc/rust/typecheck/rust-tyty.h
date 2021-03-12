@@ -226,7 +226,7 @@ class StructFieldType
 {
 public:
   StructFieldType (HirId ref, std::string name, BaseType *ty)
-    : ref (ref), name (name), ty (ty)
+    : ref (ref), name (name), ty (ty->get_ref ())
   {}
 
   HirId get_ref () const { return ref; }
@@ -237,14 +237,14 @@ public:
 
   std::string get_name () const { return name; }
 
-  BaseType *get_field_type () const { return ty; }
+  BaseType *get_field_type () const { return ty.get_tyty (); }
 
   StructFieldType *clone () const;
 
 private:
   HirId ref;
   std::string name;
-  BaseType *ty;
+  TyCtx ty;
 };
 
 class TupleType : public BaseType
@@ -383,6 +383,11 @@ public:
 
   static SubstitutionArg error () { return SubstitutionArg (nullptr, nullptr); }
 
+  std::string as_string () const
+  {
+    return param->as_string () + ":" + argument->as_string ();
+  }
+
 private:
   SubstitutionParamMapping *param;
   BaseType *argument;
@@ -403,16 +408,18 @@ public:
 
   bool is_error () const { return mappings.size () == 0; }
 
-  bool get_argument_for_symbol (SubstitutionParamMapping &param,
+  bool get_argument_for_symbol (const ParamType *param_to_find,
 				SubstitutionArg *argument)
   {
-    const ParamType *param_to_find = param.get_param_ty ();
     for (auto &mapping : mappings)
       {
 	SubstitutionParamMapping *param = mapping.get_param_mapping ();
 	const ParamType *p = param->get_param_ty ();
 
-	if (p->get_symbol ().compare (param_to_find->get_symbol ()) == 0)
+	printf ("comparing %s with %s || %s and %s\n", p->as_string ().c_str (),
+		param_to_find->as_string ().c_str (), p->get_symbol ().c_str (),
+		param_to_find->get_symbol ().c_str ());
+	if (p->as_string ().compare (param_to_find->as_string ()) == 0)
 	  {
 	    *argument = mapping;
 	    return true;
@@ -426,6 +433,16 @@ public:
   size_t size () const { return mappings.size (); }
 
   std::vector<SubstitutionArg> &get_mappings () { return mappings; }
+
+  std::string as_string () const
+  {
+    std::string buffer;
+    for (auto &mapping : mappings)
+      {
+	buffer += mapping.as_string () + ", ";
+      }
+    return "<" + buffer + ">";
+  }
 
 private:
   std::vector<SubstitutionArg> mappings;

@@ -23,6 +23,7 @@
 #include "rust-hir-type-check-type.h"
 #include "rust-tyty-rules.h"
 #include "rust-hir-map.h"
+#include "rust-substitution-mapper.h"
 
 namespace Rust {
 namespace TyTy {
@@ -133,7 +134,7 @@ ErrorType::clone ()
 std::string
 StructFieldType::as_string () const
 {
-  return name + ":" + ty->as_string ();
+  return name + ":" + get_field_type ()->as_string ();
 }
 
 bool
@@ -184,7 +185,37 @@ SubstitutionArgumentMappings
 SubstitutionRef::adjust_mappings_for_this (
   SubstitutionArgumentMappings &mappings)
 {
-  gcc_unreachable ();
+  if (substitutions.size () > mappings.size ())
+    {
+      rust_error_at (mappings.get_locus (), "not enough type arguments");
+      return SubstitutionArgumentMappings::error ();
+    }
+
+  Analysis::Mappings *mappings_table = Analysis::Mappings::get ();
+
+  std::vector<SubstitutionArg> resolved_mappings;
+  for (auto &subst : substitutions)
+    {
+      SubstitutionArg arg = SubstitutionArg::error ();
+
+      printf ("Looking up subst: %s to paramty %s for mappings: %s\n",
+	      subst.as_string ().c_str (),
+	      subst.get_param_ty ()->as_string ().c_str (),
+	      mappings.as_string ().c_str ());
+
+      bool ok = mappings.get_argument_for_symbol (subst.get_param_ty (), &arg);
+      if (!ok)
+	{
+	  rust_error_at (mappings_table->lookup_location (
+			   subst.get_param_ty ()->get_ref ()),
+			 "failed to find parameter type: %s",
+			 subst.get_param_ty ()->as_string ().c_str ());
+	  return SubstitutionArgumentMappings::error ();
+	}
+    }
+
+  return SubstitutionArgumentMappings (resolved_mappings,
+				       mappings.get_locus ());
 }
 //
 
@@ -307,12 +338,59 @@ ADTType::handle_substitions (SubstitutionArgumentMappings subst_mappings)
   for (auto &sub : adt->get_substs ())
     {
       SubstitutionArg arg = SubstitutionArg::error ();
-      bool ok = subst_mappings.get_argument_for_symbol (sub, &arg);
+      bool ok
+	= subst_mappings.get_argument_for_symbol (sub.get_param_ty (), &arg);
       rust_assert (ok);
       sub.fill_param_ty (arg.get_tyty ());
     }
 
-  printf ("Handle SUBST for ADT: %s\n", adt->as_string ().c_str ());
+  printf ("Handle SUBST 1 for ADT: %s\n", adt->as_string ().c_str ());
+
+  adt->iterate_fields ([&] (StructFieldType *field) mutable -> bool {
+    auto fty = field->get_field_type ();
+    bool is_param_ty = fty->get_kind () == TypeKind::PARAM;
+    if (is_param_ty)
+      {
+	ParamType *p = static_cast<ParamType *> (fty);
+
+	SubstitutionArg arg = SubstitutionArg::error ();
+	bool ok = subst_mappings.get_argument_for_symbol (p, &arg);
+	if (!ok)
+	  {
+	    rust_error_at (subst_mappings.get_locus (),
+			   "Failed to resolve parameter type: %s",
+			   p->as_string ().c_str ());
+	    return false;
+	  }
+
+	p->set_ty_ref (arg.get_tyty ()->get_ref ());
+      }
+    else if (fty->has_subsititions_defined ())
+      {
+	BaseType *concrete
+	  = Resolver::SubstMapperInternal::Resolve (fty, subst_mappings);
+
+	if (concrete == nullptr
+	    || concrete->get_kind () == TyTy::TypeKind::ERROR)
+	  {
+	    rust_error_at (subst_mappings.get_locus (),
+			   "Failed to resolve field substitution type: %s",
+			   fty->as_string ().c_str ());
+	    return false;
+	  }
+
+	Analysis::Mappings *mappings = Analysis::Mappings::get ();
+	auto context = Resolver::TypeCheckContext::get ();
+	context->insert_type (
+	  Analysis::NodeMapping (mappings->get_current_crate (), UNKNOWN_NODEID,
+				 fty->get_ref (), UNKNOWN_LOCAL_DEFID),
+	  concrete);
+      }
+
+    return true;
+  });
+
+  printf ("Handle SUBST 2 for ADT: %s\n", adt->as_string ().c_str ());
 
   return adt;
 }

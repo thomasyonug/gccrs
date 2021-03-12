@@ -96,6 +96,55 @@ private:
   HIR::GenericArgs *generics;
 };
 
+class SubstMapperInternal : public TyTy::TyVisitor
+{
+public:
+  static TyTy::BaseType *Resolve (TyTy::BaseType *base,
+				  TyTy::SubstitutionArgumentMappings &mappings)
+  {
+    SubstMapperInternal mapper (base->get_ref (), mappings);
+    base->accept_vis (mapper);
+    rust_assert (mapper.resolved != nullptr);
+    return mapper.resolved;
+  }
+
+  void visit (TyTy::FnType &type) override {}
+
+  void visit (TyTy::ADTType &type) override
+  {
+    TyTy::SubstitutionArgumentMappings adjusted
+      = type.adjust_mappings_for_this (mappings);
+    TyTy::BaseType *concrete = type.handle_substitions (adjusted);
+    if (concrete != nullptr)
+      resolved = concrete;
+  }
+
+  void visit (TyTy::UnitType &) override { gcc_unreachable (); }
+  void visit (TyTy::InferType &) override { gcc_unreachable (); }
+  void visit (TyTy::TupleType &) override { gcc_unreachable (); }
+  void visit (TyTy::FnPtr &) override { gcc_unreachable (); }
+  void visit (TyTy::ArrayType &) override { gcc_unreachable (); }
+  void visit (TyTy::BoolType &) override { gcc_unreachable (); }
+  void visit (TyTy::IntType &) override { gcc_unreachable (); }
+  void visit (TyTy::UintType &) override { gcc_unreachable (); }
+  void visit (TyTy::FloatType &) override { gcc_unreachable (); }
+  void visit (TyTy::USizeType &) override { gcc_unreachable (); }
+  void visit (TyTy::ISizeType &) override { gcc_unreachable (); }
+  void visit (TyTy::ErrorType &) override { gcc_unreachable (); }
+  void visit (TyTy::CharType &) override { gcc_unreachable (); }
+  void visit (TyTy::ReferenceType &) override { gcc_unreachable (); }
+  void visit (TyTy::ParamType &) override { gcc_unreachable (); }
+  void visit (TyTy::StrType &) override { gcc_unreachable (); }
+
+private:
+  SubstMapperInternal (HirId ref, TyTy::SubstitutionArgumentMappings &mappings)
+    : resolved (new TyTy::ErrorType (ref)), mappings (mappings)
+  {}
+
+  TyTy::BaseType *resolved;
+  TyTy::SubstitutionArgumentMappings &mappings;
+};
+
 } // namespace Resolver
 } // namespace Rust
 
