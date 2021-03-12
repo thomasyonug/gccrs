@@ -29,7 +29,7 @@ class SubstMapper : public TyTy::TyVisitor
 {
 public:
   static TyTy::BaseType *Resolve (TyTy::BaseType *base,
-				  HIR::GenericArgs *generics)
+				  HIR::GenericArgs *generics = nullptr)
   {
     SubstMapper mapper (base->get_ref (), generics);
     base->accept_vis (mapper);
@@ -41,7 +41,8 @@ public:
 
   void visit (TyTy::FnType &type) override
   {
-    auto concrete = have_generic_args () ? type.handle_substitions (*generics)
+    auto concrete = have_generic_args () ? type.handle_substitions (
+		      type.get_mappings_from_generic_args (*generics))
 					 : type.infer_substitions ();
     if (concrete != nullptr)
       resolved = concrete;
@@ -49,8 +50,22 @@ public:
 
   void visit (TyTy::ADTType &type) override
   {
-    auto concrete = have_generic_args () ? type.handle_substitions (*generics)
-					 : type.infer_substitions ();
+    printf ("Trying to substitute: %s have generic args %s\n",
+	    type.as_string ().c_str (),
+	    have_generic_args () ? "true" : "false");
+
+    TyTy::ADTType *concrete = nullptr;
+    if (!have_generic_args ())
+      {
+	concrete = type.infer_substitions ();
+      }
+    else
+      {
+	TyTy::SubstitutionArgumentMappings mappings
+	  = type.get_mappings_from_generic_args (*generics);
+	concrete = type.handle_substitions (mappings);
+      }
+
     if (concrete != nullptr)
       resolved = concrete;
   }

@@ -21,6 +21,7 @@
 
 #include "rust-hir-type-check-base.h"
 #include "rust-hir-full.h"
+#include "rust-substitution-mapper.h"
 
 namespace Rust {
 namespace Resolver {
@@ -175,22 +176,7 @@ public:
 	    if (path_declared_generic_arguments)
 	      {
 		if (translated->has_subsititions_defined ())
-		  {
-		    // so far we only support ADT so lets just handle it here
-		    // for now
-		    if (translated->get_kind () != TyTy::TypeKind::ADT)
-		      {
-			rust_error_at (
-			  path.get_locus (),
-			  "unsupported type for generic substitution: %s",
-			  translated->as_string ().c_str ());
-			return;
-		      }
-
-		    TyTy::ADTType *adt
-		      = static_cast<TyTy::ADTType *> (translated);
-		    translated = adt->handle_substitions (args);
-		  }
+		  translated = SubstMapper::Resolve (translated, &args);
 		else
 		  {
 		    rust_error_at (
@@ -204,19 +190,7 @@ public:
 	      }
 	    else if (translated->supports_substitions ())
 	      {
-		// so far we only support ADT so lets just handle it here
-		// for now
-		if (translated->get_kind () != TyTy::TypeKind::ADT)
-		  {
-		    rust_error_at (
-		      path.get_locus (),
-		      "unsupported type for generic substitution: %s",
-		      translated->as_string ().c_str ());
-		    return;
-		  }
-
-		TyTy::ADTType *adt = static_cast<TyTy::ADTType *> (translated);
-		translated = adt->infer_substitions ();
+		translated = SubstMapper::Resolve (translated);
 	      }
 
 	    return;
