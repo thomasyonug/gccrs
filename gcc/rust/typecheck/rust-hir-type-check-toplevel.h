@@ -94,6 +94,9 @@ public:
 	  }
       }
 
+    printf ("Trying to handle TOPLEVEL struct %s\n",
+	    struct_decl.as_string ().c_str ());
+
     std::vector<TyTy::StructFieldType *> fields;
     struct_decl.iterate ([&] (HIR::StructField &field) mutable -> bool {
       TyTy::BaseType *field_type
@@ -113,6 +116,7 @@ public:
 			   std::move (fields), std::move (substitions));
 
     context->insert_type (struct_decl.get_mappings (), type);
+    printf ("Typecheck TOPLEVEL struct: %s\n", type->as_string ().c_str ());
   }
 
   void visit (HIR::StaticItem &var)

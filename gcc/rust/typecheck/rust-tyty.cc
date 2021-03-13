@@ -193,6 +193,8 @@ SubstitutionRef::adjust_mappings_for_this (
 
   Analysis::Mappings *mappings_table = Analysis::Mappings::get ();
 
+  printf ("XXX substsss: %s\n", subst_as_string ().c_str ());
+
   std::vector<SubstitutionArg> resolved_mappings;
   for (auto &subst : substitutions)
     {
@@ -212,6 +214,9 @@ SubstitutionRef::adjust_mappings_for_this (
 			 subst.get_param_ty ()->as_string ().c_str ());
 	  return SubstitutionArgumentMappings::error ();
 	}
+
+      SubstitutionArg adjusted (&subst, arg.get_tyty ());
+      resolved_mappings.push_back (std::move (adjusted));
     }
 
   return SubstitutionArgumentMappings (resolved_mappings,
@@ -363,7 +368,13 @@ ADTType::handle_substitions (SubstitutionArgumentMappings subst_mappings)
 	    return false;
 	  }
 
-	p->set_ty_ref (arg.get_tyty ()->get_ref ());
+	printf ("substituting 11 %s with %s\n", p->as_string ().c_str (),
+		arg.as_string ().c_str ());
+
+	auto argt = arg.get_tyty ();
+	auto new_field = argt->clone ();
+	new_field->set_ref (fty->get_ref ());
+	field->set_field_type (new_field);
       }
     else if (fty->has_subsititions_defined ())
       {
@@ -379,12 +390,9 @@ ADTType::handle_substitions (SubstitutionArgumentMappings subst_mappings)
 	    return false;
 	  }
 
-	Analysis::Mappings *mappings = Analysis::Mappings::get ();
-	auto context = Resolver::TypeCheckContext::get ();
-	context->insert_type (
-	  Analysis::NodeMapping (mappings->get_current_crate (), UNKNOWN_NODEID,
-				 fty->get_ref (), UNKNOWN_LOCAL_DEFID),
-	  concrete);
+	auto new_field = concrete->clone ();
+	new_field->set_ref (fty->get_ref ());
+	field->set_field_type (new_field);
       }
 
     return true;

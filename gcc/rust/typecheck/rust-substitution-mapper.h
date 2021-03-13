@@ -114,6 +114,10 @@ public:
   {
     TyTy::SubstitutionArgumentMappings adjusted
       = type.adjust_mappings_for_this (mappings);
+
+    printf ("YYYYYY   Adjusting mappings from %s to %s\n",
+	    mappings.as_string ().c_str (), adjusted.as_string ().c_str ());
+
     TyTy::BaseType *concrete = type.handle_substitions (adjusted);
     if (concrete != nullptr)
       resolved = concrete;

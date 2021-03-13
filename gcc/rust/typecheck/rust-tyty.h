@@ -226,7 +226,7 @@ class StructFieldType
 {
 public:
   StructFieldType (HirId ref, std::string name, BaseType *ty)
-    : ref (ref), name (name), ty (ty->get_ref ())
+    : ref (ref), name (name), ty (ty)
   {}
 
   HirId get_ref () const { return ref; }
@@ -237,14 +237,16 @@ public:
 
   std::string get_name () const { return name; }
 
-  BaseType *get_field_type () const { return ty.get_tyty (); }
+  BaseType *get_field_type () const { return ty; }
+
+  void set_field_type (BaseType *fty) { ty = fty; }
 
   StructFieldType *clone () const;
 
 private:
   HirId ref;
   std::string name;
-  TyCtx ty;
+  BaseType *ty;
 };
 
 class TupleType : public BaseType
@@ -342,7 +344,18 @@ public:
 
   std::string as_string () const { return param->as_string (); }
 
-  void fill_param_ty (BaseType *type) { param->set_ty_ref (type->get_ref ()); }
+  void fill_param_ty (BaseType *type)
+  {
+    if (type->get_kind () == TypeKind::PARAM)
+      {
+	delete param;
+	param = static_cast<ParamType *> (type->clone ());
+      }
+    else
+      {
+	param->set_ty_ref (type->get_ref ());
+      }
+  }
 
   SubstitutionParamMapping clone ()
   {
@@ -416,10 +429,12 @@ public:
 	SubstitutionParamMapping *param = mapping.get_param_mapping ();
 	const ParamType *p = param->get_param_ty ();
 
-	printf ("comparing %s with %s || %s and %s\n", p->as_string ().c_str (),
-		param_to_find->as_string ().c_str (), p->get_symbol ().c_str (),
+	printf ("SubstitutionArgumentMappings [get_argument_for_symbol] "
+		"comparing %s with %s || %s and %s\n",
+		p->as_string ().c_str (), param_to_find->as_string ().c_str (),
+		p->get_symbol ().c_str (),
 		param_to_find->get_symbol ().c_str ());
-	if (p->as_string ().compare (param_to_find->as_string ()) == 0)
+	if (p->get_symbol ().compare (param_to_find->get_symbol ()) == 0)
 	  {
 	    *argument = mapping;
 	    return true;
