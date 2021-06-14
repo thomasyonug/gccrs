@@ -20,19 +20,19 @@
 #define RUST_HIR_LIVENESS_BASE
 
 #include "rust-diagnostics.h"
-#include "rust-hir-liveness.h"
-#include "rust-hir-liveness-base.h"
+#include "rust-lint-marklive.h"
+#include "rust-lint-marklive-base.h"
 #include "rust-hir-visitor.h"
 #include "rust-hir-map.h"
 
 namespace Rust {
 namespace Analysis {
 
-class LivenessBase : public HIR::HIRVisitor
+class MarkLiveBase : public HIR::HIRVisitor
 {
 public:
-  virtual ~LivenessBase () {}
-
+  virtual ~MarkLiveBase () {}
+  virtual void visit (HIR::Token &) override {}
   virtual void visit (HIR::IdentifierExpr &) override {}
   virtual void visit (HIR::Lifetime &) override {}
   virtual void visit (HIR::LifetimeParam &) override {}
@@ -151,6 +151,12 @@ public:
   virtual void visit (HIR::ExternalFunctionItem &) override {}
   virtual void visit (HIR::ExternBlock &) override {}
 
+  virtual void visit (HIR::MacroMatchFragment &) override {}
+  virtual void visit (HIR::MacroMatchRepetition &) override {}
+  virtual void visit (HIR::MacroMatcher &) override {}
+  virtual void visit (HIR::MacroRulesDefinition &) override {}
+  virtual void visit (HIR::MacroInvocation &) override {}
+
   virtual void visit (HIR::LiteralPattern &) override {}
   virtual void visit (HIR::IdentifierPattern &) override {}
   virtual void visit (HIR::WildcardPattern &) override {}
@@ -197,7 +203,7 @@ public:
   virtual void visit (HIR::BareFunctionType &) override {}
 
 protected:
-  LivenessBase () : mappings (Analysis::Mappings::get ()) {}
+  MarkLiveBase () : mappings (Analysis::Mappings::get ()) {}
 
   Analysis::Mappings *mappings;
 };
