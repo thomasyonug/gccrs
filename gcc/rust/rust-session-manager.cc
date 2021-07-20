@@ -51,7 +51,6 @@
 #include "rust-hir-type-check.h"
 #include "rust-lint-scan-deadcode.h"
 #include "rust-tycheck-dump.h"
-#include "rust-ast-resolve-unused.h"
 #include "rust-hir-const-fold.h"
 #include "rust-compile.h"
 
@@ -576,13 +575,6 @@ Session::parse_file (const char *filename)
 
   // scan dead code
   Analysis::ScanDeadcode::Scan (hir);
-
-  if (saw_errors ())
-    return;
-
-  // scan unused has to be done after type resolution since methods are resolved
-  // at that point
-  Resolver::ScanUnused::Scan ();
 
   if (saw_errors ())
     return;
